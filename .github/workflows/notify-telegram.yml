@@ -1,102 +1,102 @@
 name: Telegram Notify (Reusable)
 
-  on:
-    workflow_call:
-      inputs:
-        topic_id:
-          required: true
-          type: string
-      secrets:
-        TELEGRAM_BOT_TOKEN:
-          required: true
-        TELEGRAM_CHAT_ID:
-          required: true
+on:
+  workflow_call:
+    inputs:
+      topic_id:
+        required: true
+        type: string
+    secrets:
+      TELEGRAM_BOT_TOKEN:
+        required: true
+      TELEGRAM_CHAT_ID:
+        required: true
 
-  jobs:
-    notify:
-      runs-on: ubuntu-latest
-      steps:
-        - name: Send Telegram notification
-          env:
-            BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-            CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-            TOPIC_ID: ${{ inputs.topic_id }}
-            EVENT: ${{ github.event_name }}
-            ACTION: ${{ github.event.action }}
-          run: |
-            if [ "$EVENT" = "issues" ]; then
-              case "$ACTION" in
-                opened)   EMOJI="🆕"; HEADER="New Issue" ;;
-                closed)   EMOJI="✅"; HEADER="Issue Closed" ;;
-                reopened) EMOJI="🔄"; HEADER="Issue Reopened" ;;
-                *)        exit 0 ;;
-              esac
-              NUMBER="${{ github.event.issue.number }}"
-              TITLE="${{ github.event.issue.title }}"
-              URL="${{ github.event.issue.html_url }}"
-              BODY="${{ github.event.issue.body }}"
-              LABELS=$(echo '${{ toJson(github.event.issue.labels) }}' | jq -r
-  '[.[].name] | join(", ")')
-              EXTRA=""
-            elif [ "$EVENT" = "pull_request" ]; then
-              case "$ACTION" in
-                opened)           EMOJI="🔀"; HEADER="New PR" ;;
-                ready_for_review) EMOJI="👀"; HEADER="PR Ready for Review" ;;
-                closed)
-                  if [ "${{ github.event.pull_request.merged }}" = "true" ];
-  then
-                    EMOJI="🟣"; HEADER="PR Merged"
-                  else
-                    EMOJI="❌"; HEADER="PR Closed"
-                  fi ;;
-                *) exit 0 ;;
-              esac
-              NUMBER="${{ github.event.pull_request.number }}"
-              TITLE="${{ github.event.pull_request.title }}"
-              URL="${{ github.event.pull_request.html_url }}"
-              BODY="${{ github.event.pull_request.body }}"
-              LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' |
-  jq -r '[.[].name] | join(", ")')
-              BASE="${{ github.event.pull_request.base.ref }}"
-              HEAD="${{ github.event.pull_request.head.ref }}"
-              ADDITIONS="${{ github.event.pull_request.additions }}"
-              DELETIONS="${{ github.event.pull_request.deletions }}"
-              EXTRA="🎯 <code>${BASE}</code> ← <code>${HEAD}</code>
-            📊 <code>+${ADDITIONS} −${DELETIONS}</code>"
-            else
-              exit 0
-            fi
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram notification
+        env:
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOPIC_ID: ${{ inputs.topic_id }}
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+        run: |
+          if [ "$EVENT" = "issues" ]; then
+            case "$ACTION" in
+              opened)   EMOJI="🆕"; HEADER="New Issue" ;;
+              closed)   EMOJI="✅"; HEADER="Issue Closed" ;;
+              reopened) EMOJI="🔄"; HEADER="Issue Reopened" ;;
+              *)        exit 0 ;;
+            esac
+            NUMBER="${{ github.event.issue.number }}"
+            TITLE="${{ github.event.issue.title }}"
+            URL="${{ github.event.issue.html_url }}"
+            BODY="${{ github.event.issue.body }}"
+            LABELS=$(echo '${{ toJson(github.event.issue.labels) }}' | jq -r
+'[.[].name] | join(", ")')
+            EXTRA=""
+          elif [ "$EVENT" = "pull_request" ]; then
+            case "$ACTION" in
+              opened)           EMOJI="🔀"; HEADER="New PR" ;;
+              ready_for_review) EMOJI="👀"; HEADER="PR Ready for Review" ;;
+              closed)
+                if [ "${{ github.event.pull_request.merged }}" = "true" ];
+then
+                  EMOJI="🟣"; HEADER="PR Merged"
+                else
+                  EMOJI="❌"; HEADER="PR Closed"
+                fi ;;
+              *) exit 0 ;;
+            esac
+            NUMBER="${{ github.event.pull_request.number }}"
+            TITLE="${{ github.event.pull_request.title }}"
+            URL="${{ github.event.pull_request.html_url }}"
+            BODY="${{ github.event.pull_request.body }}"
+            LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' |
+jq -r '[.[].name] | join(", ")')
+            BASE="${{ github.event.pull_request.base.ref }}"
+            HEAD="${{ github.event.pull_request.head.ref }}"
+            ADDITIONS="${{ github.event.pull_request.additions }}"
+            DELETIONS="${{ github.event.pull_request.deletions }}"
+            EXTRA="🎯 <code>${BASE}</code> ← <code>${HEAD}</code>
+          📊 <code>+${ADDITIONS} −${DELETIONS}</code>"
+          else
+            exit 0
+          fi
 
-            SAFE_TITLE=$(echo "$TITLE" | sed 's/&/\&amp;/g; s/</\&lt;/g;
-  s/>/\&gt;/g; s/#//g')
-            BODY_PREVIEW=$(echo "$BODY" | head -c 150 | sed 's/&/\&amp;/g;
-  s/</\&lt;/g; s/>/\&gt;/g')
-            REPO_SHORT="${{ github.repository }}"
+          SAFE_TITLE=$(echo "$TITLE" | sed 's/&/\&amp;/g; s/</\&lt;/g;
+s/>/\&gt;/g; s/#//g')
+          BODY_PREVIEW=$(echo "$BODY" | head -c 150 | sed 's/&/\&amp;/g;
+s/</\&lt;/g; s/>/\&gt;/g')
+          REPO_SHORT="${{ github.repository }}"
 
-            MSG="${EMOJI} <b>${HEADER} #${NUMBER}</b>
-            <a href=\"${URL}\">${SAFE_TITLE}</a>
+          MSG="${EMOJI} <b>${HEADER} #${NUMBER}</b>
+          <a href=\"${URL}\">${SAFE_TITLE}</a>
 
-            📂 <code>${REPO_SHORT}</code>"
+          📂 <code>${REPO_SHORT}</code>"
 
-            [ -n "$BODY_PREVIEW" ] && MSG="${MSG}
-            📝 <i>${BODY_PREVIEW}</i>"
+          [ -n "$BODY_PREVIEW" ] && MSG="${MSG}
+          📝 <i>${BODY_PREVIEW}</i>"
 
-            [ -n "$LABELS" ] && MSG="${MSG}
-            🏷 <i>${LABELS}</i>"
+          [ -n "$LABELS" ] && MSG="${MSG}
+          🏷 <i>${LABELS}</i>"
 
-            [ -n "$EXTRA" ] && MSG="${MSG}
-            ${EXTRA}"
+          [ -n "$EXTRA" ] && MSG="${MSG}
+          ${EXTRA}"
 
-            RESPONSE=$(curl -s -X POST
-  "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"chat_id\": \"${CHAT_ID}\",
-                \"message_thread_id\": ${TOPIC_ID},
-                \"text\": $(echo "$MSG" | jq -Rs .),
-                \"parse_mode\": \"HTML\",
-                \"disable_web_page_preview\": true
-              }")
+          RESPONSE=$(curl -s -X POST
+"https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"chat_id\": \"${CHAT_ID}\",
+              \"message_thread_id\": ${TOPIC_ID},
+              \"text\": $(echo "$MSG" | jq -Rs .),
+              \"parse_mode\": \"HTML\",
+              \"disable_web_page_preview\": true
+            }")
 
-            echo "$RESPONSE"
-            [ "$(echo "$RESPONSE" | jq -r '.ok')" = "true" ] || exit 1
+          echo "$RESPONSE"
+          [ "$(echo "$RESPONSE" | jq -r '.ok')" = "true" ] || exit 1
